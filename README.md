@@ -3,7 +3,7 @@
 ## Diagramas
 ![Diagramas Sintácticos](assets/diagrams.png)
 
-> [!Importante]
+> [!IMPORTANT]
 > El código de Mermaid simplemente era muy grande para ponerlo aquí como un solo código de Mermaid. Revisar [código de Mermaid JS](assets/Patito_Diagramas.md)
 ---
 
