@@ -4,8 +4,8 @@
 ![Diagramas Sintácticos](assets/diagrams.png)
 
 > [!Importante]
-> El código de Mermaid simplemente era muy grande para ponerlo como un solo código de Mermaid.
-> Revisar [código de Mermaid JS](assets/Patito_Diagramas_BNF.md)
+> El código de Mermaid simplemente era muy grande para ponerlo aquí como un solo código de Mermaid.
+> Revisar [código de Mermaid JS](assets/Patito_Diagramas.md)
 ---
 
 ## Reglas Gramaticales (Backus Naur Forms)
