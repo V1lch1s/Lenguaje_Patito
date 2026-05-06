@@ -1,6 +1,6 @@
 # Lenguaje Patito
 
-## Diagramas
+<!-- ## Diagramas -->
 ![Diagramas Sintácticos](assets/diagrams.png)
 
 > [!IMPORTANT]
