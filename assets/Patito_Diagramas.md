@@ -1,5 +1,4 @@
 # Lenguaje Patito
-
 > [!Note]
 > Este conjunto de diagramas fue probado y construido en [mermaid.live](https://mermaid.live/)
 
