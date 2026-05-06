@@ -1,5 +1,4 @@
 # Lenguaje Patito
----
 
 ## Diagramas
 ![Diagramas Sintácticos](assets/diagrams.svg)
