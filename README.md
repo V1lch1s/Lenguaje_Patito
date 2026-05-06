@@ -23,7 +23,6 @@ flowchart LR
   %%  Sintácticos  %%
   %%%%%%%%%%%%%%%%%%%
   subgraph prog["&lt;Programa&gt;"]
-    direction LR
     programa --> id0 --> punto_coma0 --> VARS --> FUNCS
     punto_coma0 --> inicio
     punto_coma0 --> FUNCS
@@ -34,7 +33,6 @@ flowchart LR
   end
 
   subgraph variables["&lt;VARS&gt;"]
-    direction LR
     GHOST14 --> vars --> id1
     id1 ----> list_id --> coma0 ----> id1
     list_id --> dos_puntos0
