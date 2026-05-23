@@ -9,6 +9,18 @@
 #include <stdint.h>
 #include <string.h>
 
+//////////////////////////////////////////////
+//        EXPONER TEMPORALMENTE las         //
+//      funciones estáticas para las        //
+//          pruebas (🩶caja gris). Ej:     //
+// /*static*/ bool ordered_dict_resize(...) //
+//////////////////////////////////////////////
+
+/*    FUNCIONES EXPURESTAS TEMPORALMENTE    */
+extern bool ordered_dict_resize(ordered_Dict *d, size_t new_capacity);
+
+
+
 /* ───────────── Utilidades de Test ───────────── */
 static int total_tests = 0;
 static int passed_tests = 0;
@@ -20,12 +32,12 @@ static int passed_tests = 0;
 #define ASSERT(cond, ...) do {                  \
   total_tests++;                                \
   if (cond) {                                   \
-              printf("  ✅ ");                  \
+              printf("  ✔️ ");                  \
               printf(__VA_ARGS__);               \
               printf("\n");                      \
               passed_tests++;                    \
             } else {                             \
-              printf("  ❌ FAIL: ");             \
+              printf("  ✖️ FAIL: ");             \
               printf(__VA_ARGS__);                \
               printf(" (línea %d)\n", __LINE__);  \
             }                                     \
@@ -151,6 +163,54 @@ static void test_dict_resize(void) {
   ordered_dict_destroy(d);
 }
 
+static void test_dict_resize_overflow(void) {
+  printf("\n[Dict] Prevención de Desbordamiento en Resize (Requiere quitar 'static')\n");
+  ordered_Dict* d = ordered_dict_create(sizeof(int), sizeof(int), int_compare, int_hash, NULL, NULL);
+
+  /* Como tests.c no conoce sizeof(DictEntry) por ser opaco, no podemos
+   * calcular el límite exacto. Pero enviar SIZE_MAX garantiza superar 
+   * la validación (SIZE_MAX / sizeof(DictEntry)) asumiendo que el
+   * struct pesa > 1 byte.
+   */
+  bool result = ordered_dict_resize(d, SIZE_MAX);
+  ASSERT(result == false, "El resize aborta exitosamente al recibir una capacidad crítica (SIZE_MAX)");
+  ordered_dict_destroy(d);
+}
+
+static void test_dict_resize_migration_pointers(void) {
+  printf("\n[Dict] Migración de punteros y destructores en Resize\n");
+  destroy_count = 0; 
+  ordered_Dict* d = ordered_dict_create(sizeof(int), sizeof(int), int_compare, int_hash, 
+                                        track_destructor, track_destructor);
+  
+  /* Insertamos suficientes elementos para forzar la ejecución del resize interno */
+  for(int i = 1; i <= 15; ++i) {
+      int k = i, v = i * 10;
+      ordered_dict_put(d, &k, &v);
+  }
+  
+  /* ⚡️ Forzar un resize manual explícito gracias a la función expuesta */
+  bool resize_result = ordered_dict_resize(d, 50);
+  ASSERT(resize_result == true, "Resize explícito a capacidad 50 ejecutado con éxito");
+
+  /* Validamos que la lógica interna de free() no haya tocado los destructores del usuario */
+  ASSERT(destroy_count == 0, "El resize manual no invoca destructores del usuario (migración limpia)");
+
+  /* Validamos el re-asignamiento de order_node y la limpieza temporal */
+  DictIterator* it = ordered_dict_iterator_create(d);
+  int k, v, i = 1;
+  bool orden_correcto = true;
+  while(ordered_dict_iterator_next(it, &k, &v)) {
+      if (k != i || v != i * 10) orden_correcto = false;
+      i++;
+  }
+  ASSERT(orden_correcto && i == 16, "El iterador mantiene el orden tras el resize manual explícito");
+  ordered_dict_iterator_destroy(it);
+
+  ordered_dict_destroy(d);
+  ASSERT(destroy_count == 30, "Destructores finales (5 claves, 5 valores) operan correctamente");
+}
+
 static void test_dict_null_safety(void) {
   printf("\n[Dict] NULL Safety\n");
   ASSERT(ordered_dict_size(NULL) == 0, "ordered_dict_size(NULL) seguro");
@@ -160,6 +220,24 @@ static void test_dict_null_safety(void) {
 
   ordered_Dict* d = ordered_dict_create(sizeof(int), sizeof(int), int_compare, int_hash, NULL, NULL);
   ASSERT(!ordered_dict_put(d, NULL, NULL), "Put con key/value NULL retorna false");
+  ordered_dict_destroy(d);
+}
+
+static void test_dict_remove_keeps_probe_chain(void) {
+  printf("\n[Dict] Remove no rompe la cadena de probing\n");
+  ordered_Dict* d = ordered_dict_create(sizeof(int), sizeof(int),
+                                        int_compare, int_hash, NULL, NULL);
+
+  int a = 1, b = 9;
+  int va = 10, vb = 90, out;
+
+  ASSERT(ordered_dict_put(d, &a, &va), "Insertar A");
+  ASSERT(ordered_dict_put(d, &b, &vb), "Insertar B con colisión");
+
+  ASSERT(ordered_dict_remove(d, &a), "Eliminar A");
+  ASSERT(ordered_dict_get(d, &b, &out) && out == 90,
+         "B sigue encontrándose tras borrar A");
+
   ordered_dict_destroy(d);
 }
 
@@ -376,18 +454,23 @@ static void test_empty_structures(void) {
 
 /* ───────────── Runner Principal ───────────── */
 int main(void) {
-  printf("🧪 Suite de pruebas: Ordered Dict + Stack + Queue\n");
-  printf("═══════════════════════════════════════════════\n");
+  printf("\n-------------------------------------\n");
+  printf("🧪 Plantilla de pruebas: Ordered Dict + Stack + Queue\n");
 
   /* Ordered Dict Tests */
+  printf("\n-----------------------------------\n");
   test_dict_create_destroy();
   test_dict_basic_ops();
   test_dict_update_with_destructor();
   test_dict_remove_and_order();
   test_dict_resize();
+  test_dict_resize_overflow();
+  test_dict_resize_migration_pointers();
   test_dict_null_safety();
+  test_dict_remove_keeps_probe_chain();
 
   /* Stack Tests */
+  printf("\n-----------------------------------\n");
   test_stack_create_destroy();
   test_stack_push_pop_lifo();
   test_stack_peek();
@@ -395,6 +478,7 @@ int main(void) {
   test_stack_null_safety();
 
   /* Queue Tests */
+  printf("\n-----------------------------------\n");
   test_queue_create_destroy();
   test_queue_enqueue_dequeue_fifo();
   test_queue_peek();
@@ -402,11 +486,12 @@ int main(void) {
   test_queue_null_safety();
 
   /* Mixed / Stress */
+  printf("\n-----------------------------------\n");
   test_mixed_operations();
   test_empty_structures();
 
   /* Resumen */
-  printf("\n═══════════════════════════════════════════════\n");
+  printf("\n-----------------------------------\n");
   printf("📊 Resultados: %d/%d pruebas pasadas\n", passed_tests, total_tests);
 
   if (passed_tests == total_tests) {
@@ -417,3 +502,43 @@ int main(void) {
     return 1;
   }
 }
+
+
+
+
+
+
+
+
+
+/*
+
+              |         A
+             |     A   //  A
+            | |   //  //  //
+          | | |   \\/  \/ /
+         | | | |   // ^/  \
+        | | | |   \  / \  /
+         | | |    \/    \/
+        | | |    /       \
+       | | | |  /        /
+        | | | |/    /   /       
+      | | | | /    /   /         Mis Data Structures
+       | | | /    /   <               oooʎooo
+        | | /    /   /              o(oo(_)oo)o
+      |  | /    /   <              (oo)(___)(oo)
+       || /    /   /               o)o(_︠o︠︡︡_︡O︡︡︡︡︡︡︡_)0(o
+      |  /    /   <                 o(___ᗣ___)o
+       |/    /   /                       
+       /    /   <
+      /    /   /
+      /   /   /
+      /  /  /
+  ___/__/__/_
+ (__________)
+   / ~~~ /
+  / ~~~ /
+ / ~~~ /    El Señor de las Pruebas (¬_¬)
+(_____)
+
+*/

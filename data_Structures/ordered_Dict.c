@@ -7,7 +7,7 @@ typedef struct InsertOrderNode InsertOrderNode;
 typedef struct DictEntry       DictEntry      ;
 typedef struct ordered_dict    ordered_dict   ;
 
-/* Lista doblemente enlazada para mantener el orden de inserción y
+/* Lista Doblemente Enlazada para mantener el orden de inserción y
  * corregir un error donde las entradas eliminadas permanecían en
  * la lista de orden de inserción.
  */
@@ -57,28 +57,94 @@ static size_t ordered_dict_hash(const ordered_Dict *d, const void *key) {
   return d->key_hash(key) % d->capacity;
 }
 
-static bool ordered_dict_resize(ordered_Dict *d, size_t new_capacity) {
-  DictEntry *old_entries  = d->entries;
-  size_t     old_capacity = d->capacity;
+static bool ordered_dict_insert_no_resize(ordered_Dict *d, const void *key, const void *value) {
+  size_t idx = ordered_dict_hash(d, key);
+  size_t first_deleted = d->capacity;
 
-  // Guardar el estado completo para rollback
-  InsertOrderNode *old_head = d->insert_order_head;
-  InsertOrderNode *old_tail = d->insert_order_tail;
+  for (size_t i = 0; i < d->capacity; ++i) {
+    size_t pos = (idx + i) % d->capacity;
+    if (!d->entries[pos].occupied) {
+      if (first_deleted == d->capacity && d->entries[pos].deleted) {
+        first_deleted = pos;
+        continue;
+      }
+      if (first_deleted != d->capacity) pos = first_deleted;
+
+      char *key_copy = malloc(d->key_size);
+      char *val_copy = malloc(d->value_size);
+      if (!key_copy || !val_copy) {
+        if (key_copy) free(key_copy);
+        if (val_copy) free(val_copy);
+        return false;
+      }
+      memcpy(key_copy, key, d->key_size);
+      memcpy(val_copy, value, d->value_size);
+
+      InsertOrderNode *node = malloc(sizeof(InsertOrderNode));
+      if (!node) {
+        free(key_copy); free(val_copy);
+        return false;
+      }
+
+      d->entries[pos].key = key_copy;
+      d->entries[pos].value = val_copy;
+      d->entries[pos].occupied = true;
+      d->entries[pos].deleted = false;
+      d->size++;
+
+      node->key = key_copy;
+      node->value = val_copy;
+      node->next = NULL;
+      node->prev = d->insert_order_tail;
+      if (!d->insert_order_tail) {
+        d->insert_order_head = d->insert_order_tail = node;
+      } else {
+        d->insert_order_tail->next = node;
+        d->insert_order_tail = node;
+      }
+      d->entries[pos].order_node = node;
+      return true;
+    }
+  }
+  return false; // Tabla llena (no debería ocurrir si se gestiona el capacity externamente)
+}
+
+/*static*/ bool ordered_dict_resize(ordered_Dict *d, size_t new_capacity) {
+  if (new_capacity == 0 || new_capacity > SIZE_MAX / sizeof(DictEntry)) return false;
 
   DictEntry *new_entries = calloc(new_capacity, sizeof(DictEntry));
-  if (!new_entries) {
-    // Restaurar el estado anterior en caso de fallo (rollback)
-    // Rollback Limpio: Sin cambios en old_entries
-    return false;
-  }
+  if (!new_entries) return false;
+
+  // Guardar el estado completo de la vieja estructura
+  DictEntry *old_entries = d->entries;
+  InsertOrderNode *old_head = d->insert_order_head;
 
   // Preparar para migración
   d->entries = new_entries;
   d->capacity = new_capacity;
   d->size = 0;
-  d->insert_order_head = d->insert_order_tail = NULL;
+  d->insert_order_head = NULL;
+  d->insert_order_tail = NULL;
 
-  // Reinsertar todas las entradas activas (no borradas)
+  // Reinsertar iterando sobre la lista enlazada para preservar el ORDEN CRONOLÓGICO
+  InsertOrderNode *node = old_head;
+  while (node) {
+    // Reinsertar en la nueva infraestructura usando las claves y valores del nodo.
+    // Esto calculará el nuevo hash, indexará en el nuevo arreglo y creará 
+    // copias nuevas en memoria junto con nuevos nodos para la lista.
+    ordered_dict_insert_no_resize(d, node->key, node->value);
+    
+    // Liberar la memoria de las copias viejas.
+    // (Como las apuntan tanto la entrada vieja como este nodo, basta con liberarlas aquí)
+    free(node->key);
+    free(node->value);
+    
+    // 3. Avanzar al siguiente en el historial cronológico y liberar el nodo actual
+    InsertOrderNode *next = node->next;
+    free(node);
+    node = next;
+  }
+  /* Otra forma de programar el while(node)
   for (size_t i = 0; i < old_capacity; ++i) {
     if (old_entries[i].occupied && !old_entries[i].deleted) {
       // Despejar temporalmente los punteros Back-Pointers para evitar confusiones
@@ -99,8 +165,9 @@ static bool ordered_dict_resize(ordered_Dict *d, size_t new_capacity) {
     InsertOrderNode *next = node->next;
     free(node);  // Solo libera la estructura de nodo
     node = next;
-  }
+  } */
   
+  // Limpieza de la vieja tabla
   free(old_entries);
   return true;
 }
@@ -168,7 +235,9 @@ bool ordered_dict_put(ordered_Dict *d, const void *key, const void *value) {
 
   // Redimensionar si es necesario
   if (d->size >= d->capacity * ORDERED_DICT_LOAD_FACTOR) {
-    ordered_dict_resize(d, d->capacity * 2);
+    // 🔒 Protección contra overflow antes de multiplicar
+    if (d->capacity > SIZE_MAX / 2) return false;
+    if (!ordered_dict_resize(d, d->capacity * 2)) return false;
   }
 
   size_t idx = ordered_dict_hash(d, key);
@@ -201,14 +270,14 @@ bool ordered_dict_put(ordered_Dict *d, const void *key, const void *value) {
       memcpy(key_copy, key, d->key_size);
       memcpy(val_copy, value, d->value_size);
 
+      // Mantener orden de inserción (lista doblemente enlazada)
+      InsertOrderNode *node = malloc(sizeof(InsertOrderNode));
+
       d->entries[pos].key = key_copy;
       d->entries[pos].value = val_copy;
       d->entries[pos].occupied = true;
       d->entries[pos].deleted = false;
       d->size++;
-
-      // Mantener orden de inserción (lista doblemente enlazada)
-      InsertOrderNode *node = malloc(sizeof(InsertOrderNode));
       
       if (!node) { free(key_copy); free(val_copy); return false; }
       
@@ -230,7 +299,7 @@ bool ordered_dict_put(ordered_Dict *d, const void *key, const void *value) {
       return true;
 
     } else if (d->key_compare(d->entries[pos].key, key) == 0 &&
-                      !d->entries[pos].deleted) {
+                             !d->entries[pos].deleted) {
       // Clave ya existe: ACTUALIZAR valor
       existing_entry = &d->entries[pos];
       is_update = true;
@@ -242,13 +311,20 @@ bool ordered_dict_put(ordered_Dict *d, const void *key, const void *value) {
     // ✅ Copiar primero a buffer temporal para evitar corrupción
     char *temp_copy = malloc(d->value_size);
     if (!temp_copy) return false;
+    
     memcpy(temp_copy, value, d->value_size);
     
     // Destruir viejo valor y reemplazar
     if (d->value_destructor) {
       d->value_destructor(existing_entry->value);
     }
+
     memcpy(existing_entry->value, temp_copy, d->value_size);
+
+    if (existing_entry->order_node) {
+        existing_entry->order_node->value = existing_entry->value;
+    }
+    
     free(temp_copy);
     return true;
   }
@@ -305,8 +381,8 @@ bool ordered_dict_remove(ordered_Dict *d, const void *key) {
   
   // === CLEAN UP HASH ENTRY ===
   e->deleted = true;
-  e->occupied = false;
-  e->order_node = NULL;  // Clear back-pointer
+  e->occupied = true;   // Tombstone (Estuvo activo, pero no se usa)
+  e->order_node = NULL; // Clear back-pointer
   
   if (d->key_destructor) d->key_destructor(e->key);
   if (d->value_destructor) d->value_destructor(e->value);
@@ -332,18 +408,24 @@ size_t ordered_dict_size(const ordered_Dict *d) {
 
 void ordered_dict_clear(ordered_Dict *d) {
   if (!d) return;
+
   for (size_t i = 0; i < d->capacity; ++i) {
     if (d->entries[i].occupied && !d->entries[i].deleted) {
       if (d->key_destructor) d->key_destructor(d->entries[i].key);
       if (d->value_destructor) d->value_destructor(d->entries[i].value);
+
       free(d->entries[i].key);
-      d->entries[i].key = NULL;
       free(d->entries[i].value);
+
+      d->entries[i].key = NULL;
       d->entries[i].value = NULL;
+      d->entries[i].order_node = NULL;
     }
+
     d->entries[i].occupied = false;
     d->entries[i].deleted = false;
   }
+  
   d->size = 0;
   free_insert_order_list(d);
 }

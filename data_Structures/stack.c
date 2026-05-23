@@ -1,6 +1,7 @@
 #include "stack.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 struct Stack {
 	void *data;            // arreglo dinámico
@@ -39,8 +40,14 @@ void stack_destroy(Stack *s) {
 }
 
 static bool stack_resize(Stack *s, size_t new_capacity) {
+	if (new_capacity == 0) return false;
+	
+  // 🔒 Evita que (new_capacity * element_size) desborde size_t
+	if (new_capacity > SIZE_MAX / s->element_size) return false;
+
 	void* new_data = realloc(s->data, new_capacity * s->element_size);
 	if (!new_data) return false;
+	
 	s->data = new_data;
 	s->capacity = new_capacity;
 	return true;
@@ -48,9 +55,13 @@ static bool stack_resize(Stack *s, size_t new_capacity) {
 
 bool stack_push(Stack *s, const void* element) {
 	if (!s || !element) return false;
+
 	if (s->top == s->capacity) {
+		// 🔒 Protección contra overflow antes de multiplicar
+		if (s->capacity > SIZE_MAX / 2) return false;
 		if (!stack_resize(s, s->capacity * 2)) return false;
 	}
+
 	char* dest = (char*)s->data + s->top * s->element_size;
 	memcpy(dest, element, s->element_size);
 	s->top++;
