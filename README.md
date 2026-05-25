@@ -162,7 +162,32 @@
 &lt;Si_No&gt; → sino&lt;CUERPO&gt;
 
 
+# Configuración de entorno de desarrollo (Windows - WSL)
+Windows Subsystem for Linux (WSL) es un subsistema que permite instalar una distribución de Linux a la par con Windows (Sistema Operativo Host). Esto permite utilizar aplicaciones de linea de comandos de Bash en Windows de manera directa.
 
+[Instalación de Linux en Windows con WSL](https://learn.microsoft.com/es-es/windows/wsl/install)
+
+Yo lo que hice fue seguir las instrucciones de la página y ejecutar esto en Power Shell como administrador
+
+```powershell
+wsl --list --online  # Distros que se pueden instalar
+wsl --list --verbose
+wsl --install Debian  # Debian es la distribución más ligera
+wsl --list --verbose  # Debería aparecer la nueva distro de Linux
+```
+
+Y luego para ejecutar Debian...
+```powershell
+wsl --distribution Debian --user <mi nuevo usuario> # El nombre de usuaro que acabas de crear
+```
+
+## Instalando FLEX (Scanner generator) y BISON (Parser Generator)
+
+[Siguiendo la guía](https://github.com/westes/flex/blob/master/INSTALL.md)
+
+>[!CAUTION]
+> Pendiente terminar de configurar entorno de desarrollo con WSL.
+> [FLEX Repo Deepwiki](https://deepwiki.com/search/how-to-install-flex-on-windows_aa4d878f-0928-4427-ab7d-cb53ae53b3e)
 
 <!-- Para COPIAR Y PEGAR
 &lt;declaración_Vars&gt; →  \
