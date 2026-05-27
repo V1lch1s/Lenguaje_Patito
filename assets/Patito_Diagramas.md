@@ -56,12 +56,17 @@ flowchart LR
     llave_abierta0 --> llave_cerrado0
   end
 
+  subgraph reg["&lt;REGRESA&gt;"]
+    GHOST30 --> regresa --> EXPRESION6 --> punto_coma8 --> GHOST29
+  end
+
   subgraph est["&lt;ESTATUTO&gt;"]
     GHOST17 --> ASIGNA --> GHOST3
     GHOST17 --> CONDICION --> GHOST3
     GHOST17 --> CICLO --> GHOST3
     GHOST17 --> LLAMADA0 --> punto_coma2 --> GHOST3
     GHOST17 --> IMPRIME --> GHOST3
+    GHOST17 --> REGRESA --> GHOST3
     GHOST17 --> corchete_abierto --> ESTATUTO1 --> Multi_Sttmnt_2 --> corchete_cerrado --> GHOST3
     corchete_abierto --> corchete_cerrado
     Multi_Sttmnt_2 --> ESTATUTO1
@@ -202,6 +207,7 @@ end
 %% (flotante) x1
 %%  (escribe) x1
 %%  (letrero) x1
+%%  (regresa) x1
 id0@{ shape: stadium, label: id }
 id1@{ shape: stadium, label: id }
 id2@{ shape: stadium, label: id }
@@ -224,13 +230,15 @@ entero@{ shape: stadium, label: entero }
 flotante@{ shape: stadium, label: flotante }
 escribe@{ shape: stadium, label: escribe }
 letrero@{ shape: stadium, label: letrero }
+regresa@{ shape: stadium, label: regresa }
 
 %%%%%%%%%%%%%%%%%%%%%
 %%  No Terminales  %%
 %%%%%%%%%%%%%%%%%%%%%
 %%       [EXP] x2
-%% [EXPRESIÓN] x6
+%% [EXPRESIÓN] x7
 %%    [CUERPO] x5
+%%   [REGRESA] x1
 %%  [ESTATUTO] x2
 %%      [TIPO] x3
 %%      [VARS] x2
@@ -252,11 +260,13 @@ EXPRESION2@{ shape: rect, label: "EXPRESIÓN" }
 EXPRESION3@{ shape: rect, label: "EXPRESIÓN" }
 EXPRESION4@{ shape: rect, label: "EXPRESIÓN" }
 EXPRESION5@{ shape: rect, label: "EXPRESIÓN" }
+EXPRESION6@{ shape: rect, label: "EXPRESIÓN" }
 CUERPO0@{ shape: rect, label: "CUERPO" }
 CUERPO1@{ shape: rect, label: "CUERPO" }
 CUERPO2@{ shape: rect, label: "CUERPO" }
 CUERPO3@{ shape: rect, label: "CUERPO" }
 CUERPO4@{ shape: rect, label: "CUERPO" }
+REGRESA@{ shape: rect, label: "REGRESA" }
 ESTATUTO0@{ shape: rect, label: "ESTATUTO" }
 ESTATUTO1@{ shape: rect, label: "ESTATUTO" }
 TIPO0@{ shape: rect, label: "TIPO" }
@@ -286,7 +296,7 @@ IMPRIME@{ shape: rect, label: "IMPRIME" }
 %% (' { ') x2
 %% (' } ') x2
 %% (' : ') x2
-%% (' ; ') x8
+%% (' ; ') x9
 %% (' , ') x4
 %% (' + ') x2
 %% (' - ') x2
@@ -324,6 +334,7 @@ punto_coma4@{ shape: stadium, label: ";" }
 punto_coma5@{ shape: stadium, label: ";" }
 punto_coma6@{ shape: stadium, label: ";" }
 punto_coma7@{ shape: stadium, label: ";" }
+punto_coma8@{ shape: stadium, label: ";" }
 coma0@{ shape: stadium, label: "," }
 coma1@{ shape: stadium, label: "," }
 coma2@{ shape: stadium, label: "," }
@@ -358,6 +369,7 @@ GHOST10@{ shape:, label: " " }
 GHOST11@{ shape:, label: " " }
 GHOST12@{ shape:, label: " " }
 GHOST13@{ shape:, label: " " }
+GHOST29@{ shape:, label: " " }
 
 %% Conexión DESDE otro diagrama de sintaxis
 GHOST14@{ shape:, label: " " }
@@ -375,6 +387,7 @@ GHOST25@{ shape:, label: " " }
 GHOST26@{ shape:, label: " " }
 GHOST27@{ shape:, label: " " }
 GHOST28@{ shape:, label: " " }
+GHOST30@{ shape:, label: " " }
 
 
 
@@ -387,6 +400,6 @@ classDef military_DOS_green fill:#000000,color:#00ff00;
 classDef ghost fill:none,stroke:none,stroke-width:0px,stroke-dasharray:0 0,width:0px,height:0px,color:none;
 
 class Mult_Div,Multi_Express,Add_Sust_2,declaracion_Vars,declaracion_Funcs,list_Funcs,def_vars,identifiers,list_id,Multi_var,Add_Sust,id_CTE,def_Est,Multi_Statements,Mult_Div,Func_Type,def_Type,Multi_Type,def_Var_Funcs,Operator,def_Exp,Add_Sust_2,Mensaje,Multi_Express,Expression_Call,Expression_list,Multi_Sttmnt_2,Estatuto_Anidado,Si_No military_DOS_green_subgraph;
-class aux_no_terminus,prog,variables,tipo,corp,est,imprime,asigna,clc,cond,cte,exp,term,exprs,fctr,funcs,llmd military_DOS_green;
-class GHOST0,GHOST1,GHOST2,GHOST3,GHOST4,GHOST5,GHOST6,GHOST7,GHOST8,GHOST9,GHOST10,GHOST11,GHOST12,GHOST13,GHOST14,GHOST15,GHOST16,GHOST17,GHOST18,GHOST19,GHOST20,GHOST21,GHOST22,GHOST23,GHOST24,GHOST25,GHOST26,GHOST27,GHOST28 ghost;
+class aux_no_terminus,prog,variables,tipo,corp,reg,est,imprime,asigna,clc,cond,cte,exp,term,exprs,fctr,funcs,llmd military_DOS_green;
+class GHOST0,GHOST1,GHOST2,GHOST3,GHOST4,GHOST5,GHOST6,GHOST7,GHOST8,GHOST9,GHOST10,GHOST11,GHOST12,GHOST13,GHOST14,GHOST15,GHOST16,GHOST17,GHOST18,GHOST19,GHOST20,GHOST21,GHOST22,GHOST23,GHOST24,GHOST25,GHOST26,GHOST27,GHOST28,GHOST29,GHOST30 ghost;
 ```
